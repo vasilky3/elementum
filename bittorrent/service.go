@@ -1974,7 +1974,7 @@ func (s *Service) HasTorrentByEpisode(tmdbID int, season, episode int) *Torrent 
 		} else if t.DBItem.ShowID == tmdbID {
 			// Try to find an episode
 			for _, choice := range t.files {
-				if re.MatchString(choice.Name) {
+				if re.MatchString(choice.Name) || matchSeasonFolderEpisode(choice.Path, season, episode) {
 					return t
 				}
 			}

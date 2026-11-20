@@ -1629,7 +1629,7 @@ func (t *Torrent) GetPaused() bool {
 func (t *Torrent) GetNextEpisodeFile(season, episode int) *File {
 	re := regexp.MustCompile(fmt.Sprintf(episodeMatchRegex, season, episode))
 	for _, choice := range t.files {
-		if re.MatchString(choice.Name) {
+		if matchSeasonFolderEpisode(choice.Path, season, episode) || re.MatchString(choice.Name) {
 			return choice
 		}
 	}

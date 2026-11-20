@@ -1764,6 +1764,12 @@ func MatchEpisodeFilename(s, e int, isSingleSeason bool, activeSeason int, show 
 		}
 	}
 
+	// Season_01/17. Title.mkv keeps the season number in the directory. Matching
+	// the bare file name marks every season's episode 17 and the file list stays open.
+	if found == 0 {
+		index, found = countSeasonFolderMatches(choices, s, e)
+	}
+
 	if isSingleSeason && found == 0 {
 		re := regexp.MustCompile(fmt.Sprintf(singleEpisodeMatchRegex, e))
 		for i, choice := range choices {
