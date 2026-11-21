@@ -57,17 +57,20 @@ func (mf *MemoryFile) ReadPiece(b []byte, piece int, pieceOffset int) (n int, er
 	mf.opMu.Lock()
 	defer mf.opMu.Unlock()
 
-	// Memory storage is freed together with the torrent, so read only while torrent is alive
+	// Memory storage is freed together with the torrent, so read only while torrent is alive.
+	// A missing handle is a closed stream. A zero return is only "not ready yet".
 	if !mf.t.withHandle(func(lt.TorrentHandle) {
 		n = mf.s.Read(b, len(b), piece, pieceOffset)
 	}) {
-		return
+		return 0, io.ErrUnexpectedEOF
 	}
 
-	if n == -1 {
+	// -1 and 0 mean the piece is not readable yet. A zero-length success
+	// would close the HTTP body and Kodi would end the file.
+	if n == -1 || n == 0 {
 		err = io.ErrShortBuffer
 		return
-	} else if len(b) != n {
+	} else if n > len(b) {
 		err = io.ErrUnexpectedEOF
 		return
 	}

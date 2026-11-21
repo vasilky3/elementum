@@ -200,6 +200,9 @@ func (tf *TorrentFSEntry) Read(data []byte) (n int, err error) {
 		log.Infof("Seek failed with error: %s", err)
 		return 0, err
 	}
+	if currentOffset >= tf.f.Size {
+		return 0, io.EOF
+	}
 
 	left := len(data)
 	pos := 0
@@ -245,6 +248,12 @@ func (tf *TorrentFSEntry) Read(data []byte) (n int, err error) {
 			// if n1 < len(data) {
 			// 	log.Debugf("Move slice: n1=%d, req=%d, current=%d, piece=%d, offset=%d", n1, len(b), currentOffset, piece, pieceOffset)
 			// }
+		} else if tf.storageType == config.StorageMemory && currentOffset < tf.f.Size {
+			// A zero-length read is EOF for net/http. Mid-file that closes
+			// the stream and Kodi finishes the episode.
+			log.Debugf("Empty memory read at offset %d, retrying", currentOffset)
+			time.Sleep(500 * time.Millisecond)
+			continue
 		} else {
 			return
 		}
@@ -344,8 +353,13 @@ func (tf *TorrentFSEntry) pieceFromOffset(offset int64) (int, int) {
 	piece := (tf.f.Offset + offset) / int64(tf.pieceLength)
 	pieceOffset := (tf.f.Offset + offset) % int64(tf.pieceLength)
 
-	if int(piece) > tf.t.pieceCount {
-		piece = int64(tf.t.pieceCount)
+	// pieceCount is past the last piece. Indexing it in memory storage
+	// reads off the end of the piece vector.
+	if tf.t.pieceCount <= 0 {
+		return 0, 0
+	}
+	if piece >= int64(tf.t.pieceCount) {
+		piece = int64(tf.t.pieceCount - 1)
 	}
 
 	return int(piece), int(pieceOffset)

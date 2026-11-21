@@ -587,7 +587,7 @@ func (t *Torrent) PrioritizePiece(piece int) {
 
 	defer perf.ScopeTimer()()
 
-	for i := piece; i < piece+3; i++ {
+	for i := piece; i < piece+3 && i < t.pieceCount; i++ {
 		if t.awaitingPieces.ContainsInt(i) || t.hasPiece(i) {
 			continue
 		}
@@ -595,7 +595,11 @@ func (t *Torrent) PrioritizePiece(piece int) {
 		t.awaitingPieces.AddInt(i)
 
 		t.withHandle(func(th lt.TorrentHandle) {
-			th.SetPieceDeadline(i, i-piece*100, 0)
+			// Milliseconds from now: 0, 100, 200. Without the parentheses
+			// this is i-(piece*100), a large negative deadline. Libtorrent
+			// treats that as already overdue and keeps the peer request
+			// queue full ("max outstanding piece requests reached").
+			th.SetPieceDeadline(i, (i-piece)*100, 0)
 		})
 	}
 }
