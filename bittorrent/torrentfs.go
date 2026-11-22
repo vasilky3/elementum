@@ -209,6 +209,12 @@ func (tf *TorrentFSEntry) Read(data []byte) (n int, err error) {
 	piece, pieceOffset := tf.pieceFromOffset(currentOffset)
 
 	for left > 0 && err == nil {
+		// pieceFromOffset clamps an offset past the end onto the last piece.
+		// Reading that index again appends a second copy of the tail.
+		if currentOffset >= tf.f.Size {
+			return n, io.EOF
+		}
+
 		size := left
 
 		if err = tf.waitForPiece(piece); err != nil {
